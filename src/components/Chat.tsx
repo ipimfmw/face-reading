@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 export default function Chat() {
   const [message, setMessage] = useState("");
-  const { messages, isLoading, addMessage, setLoading } = useChatStore();
+  const { messages, isLoading, addMessage, setLoading, removePendingMessage } = useChatStore();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -23,7 +25,14 @@ export default function Chat() {
     addMessage({
       role: "user",
       content: userMessage,
+      status: "fullfilled"
     });
+
+    addMessage({
+        role: "assistant",
+        content: "...",
+        status: "pending"
+    })
 
     try {
       // AI 응답 받기
@@ -32,7 +41,8 @@ export default function Chat() {
       // AI 메시지 추가
       addMessage({
         role: "assistant",
-        content: response,
+        content: response || "빈 응답",
+        status: "fullfilled"
       });
     } catch (error) {
       console.error("Error:", error);
@@ -40,14 +50,16 @@ export default function Chat() {
       addMessage({
         role: "assistant",
         content: "죄송합니다. 응답을 생성하는 중에 문제가 발생했습니다.",
+        status: "error"
       });
     } finally {
       setLoading(false);
+      removePendingMessage();
     }
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)]">
+    <div className="flex z-20 h-full flex-col">
       <Card className="flex-1 mb-4">
         <ScrollArea className="h-full p-4">
           <div className="space-y-4">
@@ -75,15 +87,20 @@ export default function Chat() {
         </ScrollArea>
       </Card>
       
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex h-20 gap-2">
         <Textarea
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="불평불만을 마음껏 털어놓으세요..."
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
+          placeholder="type your message here"
+          onKeyUp={(e)=>{
+            if(e.key === "Enter"){
+              handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+            }
+          }}
           className="flex-1"
         />
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "전송 중..." : "전송"}
+        <Button className="h-full" type="submit" disabled={isLoading}>
+          {isLoading ? "sending..." : "send"}
         </Button>
       </form>
     </div>

@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "직장인 불평불만 상담소",
-  description: "직장인들의 불평불만을 유쾌하게 들어주는 AI 상담소",
+  title: "API TESTING",
+  description: "불평불만을 유쾌하게 들어주는 AI 상담소",
 };
 
 export default function RootLayout({
