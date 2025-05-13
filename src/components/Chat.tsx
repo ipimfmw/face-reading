@@ -11,8 +11,56 @@ import { cn } from "@/lib/utils";
 
 export default function Chat() {
   const [message, setMessage] = useState("");
-  const { messages, isLoading, addMessage, setLoading, removePendingMessage } = useChatStore();
-
+  const {
+    messages,
+    isLoading,
+    addMessage,
+    setLoading,
+    removePendingMessage,
+    context,
+    setContext,
+  } = useChatStore();
+  const generateMessage = async (userMessage: string) => {
+    try {
+        // AI 응답 받기 (context, 최근 메시지, userInput 전달)
+        const response = await getChatResponse({
+          context,
+          recentMessages: messages,
+          userInput: userMessage,
+        });
+  
+        // 응답에서 'reply:'와 'context:'로 분리
+        let reply = "";
+        let contextLine = "";
+        (response || "").split(/\n|\r\n/).forEach(line => {
+          if (line.startsWith("reply:")) reply = line.replace(/^reply:/, "").trim();
+          if (line.startsWith("context:")) contextLine = line.replace(/^context:/, "").trim();
+        });
+        if (contextLine) {
+          setContext(contextLine);
+        }
+        if(!reply) {
+           generateMessage(userMessage);
+           return;
+        }
+        addMessage({
+          role: "assistant",
+          content: reply || "빈 응답",
+          status: "fullfilled"
+        });
+      } catch (error) {
+        console.error("Error:", error);
+        // 에러 메시지 추가
+        addMessage({
+          role: "assistant",
+          content: "죄송합니다. 응답을 생성하는 중에 문제가 발생했습니다.",
+          status: "error"
+        });
+      } finally {
+        setLoading(false);
+        removePendingMessage();
+      }
+  }
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!message.trim() || isLoading) return;
@@ -29,33 +77,12 @@ export default function Chat() {
     });
 
     addMessage({
-        role: "assistant",
-        content: "...",
-        status: "pending"
+      role: "assistant",
+      content: "...",
+      status: "pending"
     })
 
-    try {
-      // AI 응답 받기
-      const response = await getChatResponse(userMessage);
-      
-      // AI 메시지 추가
-      addMessage({
-        role: "assistant",
-        content: response || "빈 응답",
-        status: "fullfilled"
-      });
-    } catch (error) {
-      console.error("Error:", error);
-      // 에러 메시지 추가
-      addMessage({
-        role: "assistant",
-        content: "죄송합니다. 응답을 생성하는 중에 문제가 발생했습니다.",
-        status: "error"
-      });
-    } finally {
-      setLoading(false);
-      removePendingMessage();
-    }
+    generateMessage(userMessage);
   };
 
   return (

@@ -5,6 +5,7 @@ export const useChatStore = create<ChatState>((set) => ({
   messages: [],
   isLoading: false,
   messageIdCounter: 0,
+  context: '',
   
   addMessage: (message) => set((state) => {
     const newId = (state.messageIdCounter + 1).toString();
@@ -28,4 +29,5 @@ export const useChatStore = create<ChatState>((set) => ({
   }),
   
   setLoading: (loading) => set({ isLoading: loading }),
+  setContext: (context) => set({ context }),
 })); 

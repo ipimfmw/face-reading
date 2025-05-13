@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { ChatMessage } from "@/types/chat";
 
 if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
   throw new Error("Missing GEMINI_API_KEY environment variable");
@@ -8,24 +9,54 @@ const ai = new GoogleGenAI({
   apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY!,
 });
 
-const CHAT_PROMPT = `당신은 상대방의 불평불만을 들어주는 10대 Z세대 상담사입니다.\n다음과 같은 성격을 가지고 응답해주세요:\n
-- 응석을 받아주지 말고 아주 매콤한 맛의 쓴소리를 해주세요.\n
-- 응답은 친구처럼 반말로 해주세요. \n
-- 유머러스하게 상대가 기분나쁘지 않고 헛웃음이 나오게 대꾸해주세요.\n
-- 3줄이상 적지 말고 촌철살인으로 써주세요. \n
-- markdown 형식을 사용하지 말고 그냥 일반 텍스트를 사용하세요.\n
-- emoji를 사용하지 마세요. 중요합니다. 이모지를 사용하지 마세요. \n
-- 유머를 많이 넣어주세요.\n
-- 요즘 유행하는 유행어와 말투 등을 활용해주세요. 다만 너무 남발하지는 말아주세요. \n
-- 상대방의 대답에 따라 간결하되 재미있게 대답해주세요. \n
-- 사투리는 사용하지 마세요. \n
-- 이어지는 내용은 사용자가 입력한 내용입니다.`;
+const SYSTEM_PROMPT = `당신은 사람들의 잡담을 들어주는 상담사입니다.\n
+다음과 같은 성격을 가지고 응답해주세요. \n
+- 당신은 평소엔 차분하다가 가끔 광기가 흘러넘치는 사람입니다. \n
+- 3:1의 비율로 차분한 대답을 하다가 한번씩 급발진 대답을 해주세요. \n
+- 급발진 시에는 최소 10줄의 대답을 해주세요. \n
+- 급발진 시에는 누가봐도 미친사람처럼 대답해주세요. \n
+- emoji를 사용하지 마세요. \n
+- 당신의 답변이 너무 반복적이지 않도록 해주세요. \n
+- markdown 형식을 사용하지 말고 그냥 일반 텍스트를 사용하세요. \n`;
 
-export async function getChatResponse(userInput: string) {
+// context: 현재까지의 대화 요약, recentMessages: 최근 메시지 배열, userInput: 사용자 입력
+export async function getChatResponse({
+  context,
+  recentMessages,
+  userInput,
+}: {
+  context: string;
+  recentMessages: ChatMessage[];
+  userInput: string;
+}) {
   try {
+    // 최근 메시지 3~5개만 context와 함께 전달
+    const recent = recentMessages.slice(-5)
+      .map((msg) => `${msg.role === "user" ? "유저" : "상담사"}: ${msg.content}`)
+      .join("\n");
+
+    // context 요약을 AI가 업데이트하도록 요청
+    const prompt = `${SYSTEM_PROMPT}
+
+[지금까지의 대화 요약]
+${context || "(아직 요약 없음)"}
+
+[최근 대화]
+${recent}
+
+[새로운 사용자 입력]
+유저: ${userInput}
+
+---
+
+위의 [지금까지의 대화 요약]을 참고해서, [최근 대화]와 [새로운 사용자 입력]을 반영해 context(대화 요약)를 최소 1줄, 최대 10줄로 업데이트해줘. 그리고 아래와 같이 반드시 두 블록(reply/context)로 구분해서 답변해:
+reply: (상담사의 답변, 위 성격대로)
+context: (업데이트된 context, 반드시 최소 1줄, 최대 10줄)
+반드시 'reply:'와 'context:'로 시작하는 두 블록으로만 답변해.`;
+
     const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: `${CHAT_PROMPT}\n\n${userInput}`,
+      model: "gemini-2.0-flash",
+      contents: prompt,
     });
     return response.text;
   } catch (error) {

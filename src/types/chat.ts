@@ -10,7 +10,9 @@ export interface ChatState {
   messages: ChatMessage[];
   isLoading: boolean;
   messageIdCounter: number;
+  context: string;
   addMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
   setLoading: (loading: boolean) => void;
   removePendingMessage: () => void;
+  setContext: (context: string) => void;
 } 
